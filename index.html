@@ -23,7 +23,7 @@
           <h1 id="statusTitle">等待定位</h1>
         </div>
         <button class="icon-button" id="refreshBtn" type="button" aria-label="重新定位" title="重新定位">
-          <span aria-hidden="true">↻</span>
+          <span aria-hidden="true">&#8635;</span>
         </button>
       </section>
 
@@ -57,12 +57,24 @@
         </article>
       </section>
 
-      <section class="track-panel" aria-label="移動軌跡">
+      <section class="track-panel" aria-label="地圖與移動軌跡">
         <div class="section-heading">
-          <h2>相對軌跡</h2>
+          <h2>地圖與軌跡</h2>
           <span id="pointCount">0 點</span>
         </div>
-        <canvas id="trackCanvas" width="720" height="520"></canvas>
+        <div class="map-viewport" id="mapViewport">
+          <div class="tile-layer" id="tileLayer" aria-hidden="true"></div>
+          <canvas id="trackCanvas" width="720" height="520"></canvas>
+          <div class="map-controls" aria-label="地圖控制">
+            <button id="zoomInBtn" type="button" aria-label="放大地圖" title="放大">+</button>
+            <button id="zoomOutBtn" type="button" aria-label="縮小地圖" title="縮小">-</button>
+            <button id="centerMapBtn" type="button" aria-label="回到目前位置" title="回到目前位置">◎</button>
+          </div>
+          <div class="map-mode" id="mapMode">線上地圖</div>
+          <a class="map-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+            © OpenStreetMap contributors
+          </a>
+        </div>
       </section>
 
       <section class="actions" aria-label="操作">
@@ -73,7 +85,7 @@
       </section>
 
       <p class="notice" id="installHint">
-        在 iPhone Safari 開啟後，使用分享選單加入主畫面。之後即使離線，也能開啟並讀取 GPS。
+        有網路時會顯示 OpenStreetMap 底圖；離線時仍可讀取 GPS、顯示座標與已記錄軌跡。之後可加入合法離線地圖包。
       </p>
     </main>
 

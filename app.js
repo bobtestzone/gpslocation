@@ -8,8 +8,14 @@ const els = {
   speed: document.querySelector("#speed"),
   heading: document.querySelector("#heading"),
   pointCount: document.querySelector("#pointCount"),
+  mapViewport: document.querySelector("#mapViewport"),
+  tileLayer: document.querySelector("#tileLayer"),
+  mapMode: document.querySelector("#mapMode"),
   canvas: document.querySelector("#trackCanvas"),
   refreshBtn: document.querySelector("#refreshBtn"),
+  zoomInBtn: document.querySelector("#zoomInBtn"),
+  zoomOutBtn: document.querySelector("#zoomOutBtn"),
+  centerMapBtn: document.querySelector("#centerMapBtn"),
   copyBtn: document.querySelector("#copyBtn"),
   shareBtn: document.querySelector("#shareBtn"),
   exportBtn: document.querySelector("#exportBtn"),
@@ -18,9 +24,19 @@ const els = {
 
 const storageKey = "offline-gps-track-v1";
 const ctx = els.canvas.getContext("2d");
+const tileSize = 256;
+const taiwanCenter = { lat: 23.75, lng: 121.0 };
+
 let watchId = null;
 let lastPosition = null;
 let track = loadTrack();
+let mapState = {
+  center: track.at(-1) || taiwanCenter,
+  zoom: track.length > 0 ? 15 : 7,
+  dragging: false,
+  dragStart: null,
+  dragCenterPixel: null,
+};
 
 function formatNumber(value, digits = 6) {
   return Number.isFinite(value) ? value.toFixed(digits) : "--";
@@ -47,6 +63,9 @@ function updateNetworkStatus() {
   const online = navigator.onLine;
   els.networkStatus.textContent = online ? "有網路" : "離線";
   els.networkStatus.classList.toggle("is-offline", !online);
+  els.mapMode.textContent = online ? "線上地圖" : "離線軌跡";
+  els.tileLayer.classList.toggle("is-hidden", !online);
+  renderMap();
 }
 
 function loadTrack() {
@@ -84,12 +103,13 @@ function updatePosition(position) {
     time: new Date(position.timestamp).toISOString(),
   };
 
+  mapState.center = nextPoint;
   const previous = track.at(-1);
   if (!previous || distanceMeters(previous, nextPoint) >= 2) {
     track.push(nextPoint);
     saveTrack();
-    drawTrack();
   }
+  renderMap();
 }
 
 function handleLocationError(error) {
@@ -131,18 +151,75 @@ function distanceMeters(a, b) {
   return radius * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-function projectPoint(point, origin) {
-  const metersPerDegreeLat = 111320;
-  const metersPerDegreeLng = 111320 * Math.cos((origin.lat * Math.PI) / 180);
+function lngLatToPixel(point, zoom) {
+  const scale = tileSize * 2 ** zoom;
+  const sinLat = Math.sin((point.lat * Math.PI) / 180);
   return {
-    x: (point.lng - origin.lng) * metersPerDegreeLng,
-    y: (point.lat - origin.lat) * metersPerDegreeLat,
+    x: ((point.lng + 180) / 360) * scale,
+    y: (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale,
   };
 }
 
-function drawTrack() {
+function pixelToLngLat(pixel, zoom) {
+  const scale = tileSize * 2 ** zoom;
+  const lng = (pixel.x / scale) * 360 - 180;
+  const n = Math.PI - (2 * Math.PI * pixel.y) / scale;
+  const lat = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+  return { lat, lng };
+}
+
+function sizeCanvasToViewport() {
+  const rect = els.mapViewport.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+  const width = Math.max(320, Math.round(rect.width * ratio));
+  const height = Math.max(240, Math.round(rect.height * ratio));
+  if (els.canvas.width !== width || els.canvas.height !== height) {
+    els.canvas.width = width;
+    els.canvas.height = height;
+  }
+  return { cssWidth: rect.width, cssHeight: rect.height, ratio };
+}
+
+function renderMap() {
+  const view = sizeCanvasToViewport();
+  const centerPixel = lngLatToPixel(mapState.center, mapState.zoom);
+  renderTiles(view, centerPixel);
+  drawTrack(view, centerPixel);
+}
+
+function renderTiles(view, centerPixel) {
+  els.tileLayer.innerHTML = "";
+  if (!navigator.onLine) return;
+
+  const zoom = mapState.zoom;
+  const worldTiles = 2 ** zoom;
+  const left = centerPixel.x - view.cssWidth / 2;
+  const top = centerPixel.y - view.cssHeight / 2;
+  const startX = Math.floor(left / tileSize);
+  const endX = Math.floor((left + view.cssWidth) / tileSize);
+  const startY = Math.floor(top / tileSize);
+  const endY = Math.floor((top + view.cssHeight) / tileSize);
+
+  for (let x = startX; x <= endX; x += 1) {
+    for (let y = startY; y <= endY; y += 1) {
+      if (y < 0 || y >= worldTiles) continue;
+      const wrappedX = ((x % worldTiles) + worldTiles) % worldTiles;
+      const tile = document.createElement("img");
+      tile.alt = "";
+      tile.decoding = "async";
+      tile.loading = "lazy";
+      tile.src = `https://tile.openstreetmap.org/${zoom}/${wrappedX}/${y}.png`;
+      tile.style.left = `${Math.round(x * tileSize - left)}px`;
+      tile.style.top = `${Math.round(y * tileSize - top)}px`;
+      els.tileLayer.append(tile);
+    }
+  }
+}
+
+function drawTrack(view, centerPixel) {
   const width = els.canvas.width;
   const height = els.canvas.height;
+  const ratio = view.ratio;
   ctx.clearRect(0, 0, width, height);
   els.pointCount.textContent = `${track.length} 點`;
 
@@ -151,56 +228,94 @@ function drawTrack() {
     return;
   }
 
-  const origin = track[0];
-  const points = track.map((point) => projectPoint(point, origin));
-  const xs = points.map((point) => point.x);
-  const ys = points.map((point) => point.y);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-  const padding = 42;
-  const scaleX = (width - padding * 2) / Math.max(10, maxX - minX);
-  const scaleY = (height - padding * 2) / Math.max(10, maxY - minY);
-  const scale = Math.min(scaleX, scaleY);
-  const centerX = (minX + maxX) / 2;
-  const centerY = (minY + maxY) / 2;
+  const toCanvas = (point) => {
+    const pixel = lngLatToPixel(point, mapState.zoom);
+    return {
+      x: (view.cssWidth / 2 + pixel.x - centerPixel.x) * ratio,
+      y: (view.cssHeight / 2 + pixel.y - centerPixel.y) * ratio,
+    };
+  };
 
-  const toCanvas = (point) => ({
-    x: width / 2 + (point.x - centerX) * scale,
-    y: height / 2 - (point.y - centerY) * scale,
-  });
-
-  ctx.lineWidth = 6;
+  ctx.lineWidth = 5 * ratio;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
   ctx.strokeStyle = "#0f766e";
   ctx.beginPath();
-  points.map(toCanvas).forEach((point, index) => {
+  track.map(toCanvas).forEach((point, index) => {
     if (index === 0) ctx.moveTo(point.x, point.y);
     else ctx.lineTo(point.x, point.y);
   });
   ctx.stroke();
 
-  drawMarker(toCanvas(points[0]), "#334155", 9);
-  drawMarker(toCanvas(points.at(-1)), "#dc2626", 11);
+  drawMarker(toCanvas(track[0]), "#334155", 8 * ratio, ratio);
+  drawMarker(toCanvas(track.at(-1)), "#dc2626", 10 * ratio, ratio);
 }
 
-function drawMarker(point, color, radius) {
+function drawMarker(point, color, radius, ratio) {
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
   ctx.fill();
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 3 * ratio;
   ctx.strokeStyle = "#fff";
   ctx.stroke();
 }
 
 function drawEmptyTrack(width, height) {
   ctx.fillStyle = "#66736f";
-  ctx.font = "28px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+  ctx.font = `${22 * (window.devicePixelRatio || 1)}px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif`;
   ctx.textAlign = "center";
   ctx.fillText("尚無軌跡", width / 2, height / 2);
+}
+
+function zoomMap(delta) {
+  mapState.zoom = Math.max(5, Math.min(18, mapState.zoom + delta));
+  renderMap();
+}
+
+function centerOnCurrentPosition() {
+  if (track.length > 0) {
+    mapState.center = track.at(-1);
+    mapState.zoom = Math.max(mapState.zoom, 15);
+  } else {
+    mapState.center = taiwanCenter;
+    mapState.zoom = 7;
+  }
+  renderMap();
+}
+
+function pointerPoint(event) {
+  const rect = els.mapViewport.getBoundingClientRect();
+  return {
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top,
+  };
+}
+
+function startDrag(event) {
+  mapState.dragging = true;
+  mapState.dragStart = pointerPoint(event);
+  mapState.dragCenterPixel = lngLatToPixel(mapState.center, mapState.zoom);
+  els.mapViewport.setPointerCapture(event.pointerId);
+}
+
+function moveDrag(event) {
+  if (!mapState.dragging) return;
+  const current = pointerPoint(event);
+  const dx = current.x - mapState.dragStart.x;
+  const dy = current.y - mapState.dragStart.y;
+  mapState.center = pixelToLngLat({
+    x: mapState.dragCenterPixel.x - dx,
+    y: mapState.dragCenterPixel.y - dy,
+  }, mapState.zoom);
+  renderMap();
+}
+
+function endDrag(event) {
+  mapState.dragging = false;
+  if (els.mapViewport.hasPointerCapture(event.pointerId)) {
+    els.mapViewport.releasePointerCapture(event.pointerId);
+  }
 }
 
 async function copyCoordinates() {
@@ -242,14 +357,22 @@ function exportGpx() {
 function clearTrack() {
   track = [];
   saveTrack();
-  drawTrack();
+  centerOnCurrentPosition();
 }
 
 els.refreshBtn.addEventListener("click", startWatching);
+els.zoomInBtn.addEventListener("click", () => zoomMap(1));
+els.zoomOutBtn.addEventListener("click", () => zoomMap(-1));
+els.centerMapBtn.addEventListener("click", centerOnCurrentPosition);
 els.copyBtn.addEventListener("click", copyCoordinates);
 els.shareBtn.addEventListener("click", shareCoordinates);
 els.exportBtn.addEventListener("click", exportGpx);
 els.clearBtn.addEventListener("click", clearTrack);
+els.mapViewport.addEventListener("pointerdown", startDrag);
+els.mapViewport.addEventListener("pointermove", moveDrag);
+els.mapViewport.addEventListener("pointerup", endDrag);
+els.mapViewport.addEventListener("pointercancel", endDrag);
+window.addEventListener("resize", renderMap);
 window.addEventListener("online", updateNetworkStatus);
 window.addEventListener("offline", updateNetworkStatus);
 
@@ -260,5 +383,5 @@ if ("serviceWorker" in navigator) {
 }
 
 updateNetworkStatus();
-drawTrack();
+renderMap();
 startWatching();
