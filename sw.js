@@ -1,4 +1,4 @@
-const cacheName = "offline-gps-v5";
+const cacheName = "offline-gps-v6";
 const appShell = [
   "./",
   "./index.html",

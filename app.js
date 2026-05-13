@@ -6,7 +6,6 @@ const els = {
   accuracy: document.querySelector("#accuracy"),
   altitude: document.querySelector("#altitude"),
   speed: document.querySelector("#speed"),
-  heading: document.querySelector("#heading"),
   recordTabBtn: document.querySelector("#recordTabBtn"),
   historyTabBtn: document.querySelector("#historyTabBtn"),
   recordView: document.querySelector("#recordView"),
@@ -19,6 +18,12 @@ const els = {
   elapsedTime: document.querySelector("#elapsedTime"),
   recordDistance: document.querySelector("#recordDistance"),
   elevationGain: document.querySelector("#elevationGain"),
+  routeDate: document.querySelector("#routeDate"),
+  routeDistance: document.querySelector("#routeDistance"),
+  routeTime: document.querySelector("#routeTime"),
+  altitudeRange: document.querySelector("#altitudeRange"),
+  totalAscent: document.querySelector("#totalAscent"),
+  totalDescent: document.querySelector("#totalDescent"),
   pointCount: document.querySelector("#pointCount"),
   mapViewport: document.querySelector("#mapViewport"),
   tileLayer: document.querySelector("#tileLayer"),
@@ -67,12 +72,16 @@ function formatMeters(value) {
   return Number.isFinite(value) ? `${Math.round(value)} m` : "--";
 }
 
-function formatSpeed(value) {
-  return Number.isFinite(value) ? `${(value * 3.6).toFixed(1)} km/h` : "--";
+function formatMetersZh(value) {
+  return Number.isFinite(value) ? `${Math.round(value)} 公尺` : "--";
 }
 
-function formatHeading(value) {
-  return Number.isFinite(value) ? `${Math.round(value)} deg` : "--";
+function formatKilometers(value) {
+  return Number.isFinite(value) ? `${(value / 1000).toFixed(2)} 公里` : "0 公里";
+}
+
+function formatSpeed(value) {
+  return Number.isFinite(value) ? `${(value * 3.6).toFixed(1)} km/h` : "--";
 }
 
 function formatDuration(ms) {
@@ -192,6 +201,34 @@ function totalElevationGain(points) {
   return gain;
 }
 
+function totalElevationLoss(points) {
+  let loss = 0;
+  for (let i = 1; i < points.length; i += 1) {
+    const previous = points[i - 1].altitude;
+    const current = points[i].altitude;
+    if (!Number.isFinite(previous) || !Number.isFinite(current)) continue;
+    const delta = previous - current;
+    if (delta > 3) loss += delta;
+  }
+  return loss;
+}
+
+function altitudeRangeMeters(points) {
+  const altitudes = points.map((point) => point.altitude).filter(Number.isFinite);
+  if (altitudes.length === 0) return 0;
+  return Math.max(...altitudes) - Math.min(...altitudes);
+}
+
+function routeDateText(points) {
+  const time = points[0]?.time || (session.startedAt ? new Date(session.startedAt).toISOString() : null);
+  if (!time) return "--";
+  return new Date(time).toLocaleDateString("zh-TW", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
+
 function updateRecordingUi() {
   const hasRecord = track.length > 0 || elapsedMs() > 0;
   els.recordName.value = session.name || "";
@@ -203,6 +240,12 @@ function updateRecordingUi() {
   els.elapsedTime.textContent = formatDuration(elapsedMs());
   els.recordDistance.textContent = formatMeters(totalDistanceMeters(track));
   els.elevationGain.textContent = formatMeters(totalElevationGain(track));
+  els.routeDate.textContent = routeDateText(track);
+  els.routeDistance.textContent = formatKilometers(totalDistanceMeters(track));
+  els.routeTime.textContent = formatDuration(elapsedMs());
+  els.altitudeRange.textContent = formatMetersZh(altitudeRangeMeters(track));
+  els.totalAscent.textContent = formatMetersZh(totalElevationGain(track));
+  els.totalDescent.textContent = formatMetersZh(totalElevationLoss(track));
 }
 
 async function requestWakeLock() {
@@ -267,6 +310,8 @@ function saveRecordSnapshot() {
     elapsedMs: elapsedMs(),
     distanceMeters: totalDistanceMeters(track),
     elevationGain: totalElevationGain(track),
+    elevationLoss: totalElevationLoss(track),
+    altitudeRange: altitudeRangeMeters(track),
     track: track.slice(),
   };
   savedRecords = [record, ...savedRecords.filter((item) => item.id !== record.id)];
@@ -291,7 +336,6 @@ function updatePosition(position) {
   els.accuracy.textContent = formatMeters(accuracy);
   els.altitude.textContent = formatMeters(altitude);
   els.speed.textContent = formatSpeed(speed);
-  els.heading.textContent = formatHeading(heading);
   setStatus("定位中");
 
   currentPoint = {
@@ -550,7 +594,7 @@ function renderHistory() {
 
     const meta = document.createElement("p");
     const date = record.updatedAt ? new Date(record.updatedAt).toLocaleString("zh-TW") : "";
-    meta.textContent = `${date} · ${formatDuration(record.elapsedMs || 0)} · ${formatMeters(record.distanceMeters || 0)} · ${record.track?.length || 0} 點`;
+    meta.textContent = `${date} · ${formatDuration(record.elapsedMs || 0)} · ${formatKilometers(record.distanceMeters || 0)} · 爬升 ${formatMeters(record.elevationGain || 0)} · ${record.track?.length || 0} 點`;
 
     const actions = document.createElement("div");
     actions.className = "history-actions";
