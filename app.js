@@ -1,5 +1,6 @@
 const els = {
   statusTitle: document.querySelector("#statusTitle"),
+  networkStatus: document.querySelector("#networkStatus"),
   lat: document.querySelector("#lat"),
   lng: document.querySelector("#lng"),
   accuracy: document.querySelector("#accuracy"),
@@ -40,6 +41,12 @@ function formatHeading(value) {
 function setStatus(text, warning = false) {
   els.statusTitle.textContent = text;
   els.statusTitle.classList.toggle("is-warning", warning);
+}
+
+function updateNetworkStatus() {
+  const online = navigator.onLine;
+  els.networkStatus.textContent = online ? "有網路" : "離線";
+  els.networkStatus.classList.toggle("is-offline", !online);
 }
 
 function loadTrack() {
@@ -243,6 +250,8 @@ els.copyBtn.addEventListener("click", copyCoordinates);
 els.shareBtn.addEventListener("click", shareCoordinates);
 els.exportBtn.addEventListener("click", exportGpx);
 els.clearBtn.addEventListener("click", clearTrack);
+window.addEventListener("online", updateNetworkStatus);
+window.addEventListener("offline", updateNetworkStatus);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -250,5 +259,6 @@ if ("serviceWorker" in navigator) {
   });
 }
 
+updateNetworkStatus();
 drawTrack();
 startWatching();

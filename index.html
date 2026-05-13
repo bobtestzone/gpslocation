@@ -16,7 +16,10 @@
     <main class="app-shell">
       <section class="top-panel" aria-label="目前 GPS 狀態">
         <div>
-          <p class="eyebrow">目前位置</p>
+          <div class="status-line">
+            <p class="eyebrow">目前位置</p>
+            <span id="networkStatus" class="network-status">檢查網路</span>
+          </div>
           <h1 id="statusTitle">等待定位</h1>
         </div>
         <button class="icon-button" id="refreshBtn" type="button" aria-label="重新定位" title="重新定位">

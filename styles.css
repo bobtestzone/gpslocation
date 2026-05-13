@@ -66,12 +66,50 @@ button:active {
   padding: 18px;
 }
 
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
 .eyebrow {
-  margin: 0 0 4px;
+  margin: 0;
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0;
+}
+
+.network-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  padding: 0 9px;
+  background: #e7f6f3;
+  color: var(--accent-dark);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.network-status::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+.network-status.is-offline {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.network-status.is-offline::before {
+  background: #f97316;
 }
 
 h1,
