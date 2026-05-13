@@ -27,6 +27,13 @@
         </button>
       </section>
 
+      <nav class="view-tabs" aria-label="主要頁面">
+        <button id="recordTabBtn" type="button" class="is-active">記錄</button>
+        <button id="historyTabBtn" type="button">歷史</button>
+      </nav>
+
+      <div id="recordView">
+
       <section class="coordinate-panel" aria-label="座標">
         <div class="coord-row">
           <span>緯度</span>
@@ -57,6 +64,33 @@
         </article>
       </section>
 
+      <section class="recorder-panel" aria-label="健行記錄">
+        <label class="record-name-label" for="recordName">紀錄名稱</label>
+        <input id="recordName" class="record-name-input" type="text" maxlength="40" placeholder="例如：合歡山北峰">
+        <button id="recordBtn" type="button" class="record-button" aria-label="開始或停止記錄">
+          <span id="recordIcon" aria-hidden="true">▶</span>
+          <span id="recordLabel">開始記錄</span>
+        </button>
+        <div class="record-stats">
+          <article>
+            <span>狀態</span>
+            <strong id="recordStatus">未記錄</strong>
+          </article>
+          <article>
+            <span>時間</span>
+            <strong id="elapsedTime">00:00:00</strong>
+          </article>
+          <article>
+            <span>距離</span>
+            <strong id="recordDistance">0 m</strong>
+          </article>
+          <article>
+            <span>爬升</span>
+            <strong id="elevationGain">0 m</strong>
+          </article>
+        </div>
+      </section>
+
       <section class="track-panel" aria-label="地圖與移動軌跡">
         <div class="section-heading">
           <h2>地圖與軌跡</h2>
@@ -81,12 +115,21 @@
         <button id="copyBtn" type="button">複製 GPS</button>
         <button id="shareBtn" type="button">分享</button>
         <button id="exportBtn" type="button">匯出 GPX</button>
-        <button id="clearBtn" type="button" class="secondary">清除軌跡</button>
+        <button id="clearBtn" type="button" class="secondary">清除記錄</button>
       </section>
 
       <p class="notice" id="installHint">
-        有網路時會顯示 OpenStreetMap 底圖；離線時仍可讀取 GPS、顯示座標與已記錄軌跡。之後可加入合法離線地圖包。
+        按「開始記錄」後才會把 GPS、時間、海拔與軌跡存到手機裡。有網路時顯示 OpenStreetMap 底圖；離線時仍可記錄 GPS 與匯出 GPX。
       </p>
+      </div>
+
+      <section id="historyView" class="history-panel is-hidden" aria-label="歷史記錄">
+        <div class="section-heading">
+          <h2>歷史記錄</h2>
+          <span id="historyCount">0 筆</span>
+        </div>
+        <div id="historyList" class="history-list"></div>
+      </section>
     </main>
 
     <script src="app.js" defer></script>
