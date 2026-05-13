@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0f766e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="離線 GPS">
+    <title>離線 GPS</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="top-panel" aria-label="目前 GPS 狀態">
+        <div>
+          <p class="eyebrow">目前位置</p>
+          <h1 id="statusTitle">等待定位</h1>
+        </div>
+        <button class="icon-button" id="refreshBtn" type="button" aria-label="重新定位" title="重新定位">
+          <span aria-hidden="true">↻</span>
+        </button>
+      </section>
+
+      <section class="coordinate-panel" aria-label="座標">
+        <div class="coord-row">
+          <span>緯度</span>
+          <strong id="lat">--</strong>
+        </div>
+        <div class="coord-row">
+          <span>經度</span>
+          <strong id="lng">--</strong>
+        </div>
+      </section>
+
+      <section class="metrics-grid" aria-label="定位數據">
+        <article>
+          <span>精度</span>
+          <strong id="accuracy">--</strong>
+        </article>
+        <article>
+          <span>海拔</span>
+          <strong id="altitude">--</strong>
+        </article>
+        <article>
+          <span>速度</span>
+          <strong id="speed">--</strong>
+        </article>
+        <article>
+          <span>航向</span>
+          <strong id="heading">--</strong>
+        </article>
+      </section>
+
+      <section class="track-panel" aria-label="移動軌跡">
+        <div class="section-heading">
+          <h2>相對軌跡</h2>
+          <span id="pointCount">0 點</span>
+        </div>
+        <canvas id="trackCanvas" width="720" height="520"></canvas>
+      </section>
+
+      <section class="actions" aria-label="操作">
+        <button id="copyBtn" type="button">複製座標</button>
+        <button id="shareBtn" type="button">分享</button>
+        <button id="exportBtn" type="button">匯出 GPX</button>
+        <button id="clearBtn" type="button" class="secondary">清除軌跡</button>
+      </section>
+
+      <p class="notice" id="installHint">
+        在 iPhone Safari 開啟後，使用分享選單加入主畫面。之後即使離線，也能開啟並讀取 GPS。
+      </p>
+    </main>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>
