@@ -198,8 +198,9 @@ function drawEmptyTrack(width, height) {
 
 async function copyCoordinates() {
   if (!lastPosition) return;
-  const { latitude, longitude } = lastPosition.coords;
-  await navigator.clipboard.writeText(`${latitude.toFixed(7)}, ${longitude.toFixed(7)}`);
+  const { latitude, longitude, accuracy } = lastPosition.coords;
+  const accuracyText = Number.isFinite(accuracy) ? `, 精度 ${Math.round(accuracy)} m` : "";
+  await navigator.clipboard.writeText(`GPS: ${latitude.toFixed(7)}, ${longitude.toFixed(7)}${accuracyText}`);
 }
 
 async function shareCoordinates() {
